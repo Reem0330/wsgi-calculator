@@ -40,18 +40,66 @@ To submit your homework:
 
 
 """
+import traceback
 
+def home_page():
+    page = """
+<h1>WSGI Calculator By Reem</h1>
+<h2>How it works:</h2>
+<p>
+<ol>
+<li>Put one of the following calculations after the URL:  http://localhost:8080  separated by a forward slash
+<ul>
+<li>add</li>
+<li>subtract</li>
+<li>multiply</li>
+<li>divide</li>
+</ul>
+</li>
+<li>Add a forward slash / then add the numbers you want to perfor the calculation on separated by a forward slash '/'</li>
+
+<h3>Example </h3>
+Calculation:  32 + 42
+URL:  http://localhost:8080/add/32/42
+</p>
+"""
+    return page
 
 def add(*args):
     """ Returns a STRING with the sum of the arguments """
 
     # TODO: Fill sum with the correct value, based on the
     # args provided.
-    sum = "0"
-
-    return sum
+    sum = 0
+    for a in args:
+      sum += int(a)
+    return str(sum)
 
 # TODO: Add functions for handling more arithmetic operations.
+
+def divide(*args):
+    """ Returns a STRING with the results of the dvision of the arguments """
+
+    try:
+        result = int(args[0]) / int(args[1])
+        return str(result)
+
+    except ZeroDivisionError:
+        return 'Dividing by zero error!'
+
+def subtract(*args):
+    """ Returns a STRING with the result of subtracting the arguments """
+
+    result = float(args[0]) - float(args[1])
+    return str(result)
+
+
+def multiply(*args):
+    """ Returns a STRING with the result of multipluomg the arguments """
+
+    result = int(args[0]) * int(args[1])
+    return str(result)
+
 
 def resolve_path(path):
     """
@@ -63,8 +111,22 @@ def resolve_path(path):
     # examples provide the correct *syntax*, but you should
     # determine the actual values of func and args using the
     # path.
-    func = add
-    args = ['25', '32']
+
+    funcs = {
+    '': home_page,
+    'add': add,
+    'multiply': multiply,
+    'subtract': subtract,
+    'divide': divide
+    }
+    path = path.strip('/').split('/')
+    func = path[0]
+    args = path[1:]
+
+    try:
+        func = funcs[func]
+    except KeyError:
+        raise NameError
 
     return func, args
 
@@ -76,9 +138,29 @@ def application(environ, start_response):
     #
     # TODO (bonus): Add error handling for a user attempting
     # to divide by zero.
-    pass
+    headers = [("Content-type", "text/html")]
+    try:
+        path = environ.get('PATH_INFO', None)
+        if path is None:
+            raise NameError
+        func, args = resolve_path(path)
+        body = func(*args)
+        status = "200 OK"
+    except NameError:
+        status = "404 Not Found"
+        body = "<h1>Not Found</h1>"
+    except Exception:
+        status = "500 Internal Server Error"
+        body = "<h1>Internal Server Error</h1>"
+        print(traceback.format_exc())
+    finally:
+        headers.append(('Content-length', str(len(body))))
+        start_response(status, headers)
+        return [body.encode('utf8')]
 
 if __name__ == '__main__':
     # TODO: Insert the same boilerplate wsgiref simple
     # server creation that you used in the book database.
-    pass
+    from wsgiref.simple_server import make_server
+    srv = make_server('localhost', 8080, application)
+    srv.serve_forever()
